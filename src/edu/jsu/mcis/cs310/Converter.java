@@ -72,8 +72,47 @@ public class Converter {
             
             /* INSERT YOUR CODE HERE */
             
-        }
-        catch(Exception e) { e.printStackTrace(); }
+            // Where the json string will be built
+            JSONObject json = new JSONObject();
+            // Container for when the row headers and data are being worked with
+            String[] record;
+            
+            // Column headers
+            // Movement from array to list for compatibility with json
+            List<String> cHeadings = new ArrayList<>();
+            String[] cHeader = iterator.next();
+            for (int i = 0; i < cHeader.length; i++) {
+                cHeadings.add(cHeader[i]);
+            }
+            json.put("colHeaders", cHeadings);
+            
+            // Row headers and data in the same while statement
+            List<String> rHeadings = new ArrayList();
+            List<List<Integer>> ints = new ArrayList();
+            
+            while (iterator.hasNext()) {
+                ArrayList nextdata = new ArrayList();
+                record = iterator.next();
+                // Initialize new object here so the objects don't compound on each other
+                for (int i = 0; i < cHeadings.size(); i++) {
+                    if (i == 0) {
+                        // Row heading handler
+                        rHeadings.add(record[i]);
+                    } else {
+                        // Data handler (type must be changed to integer)
+                        nextdata.add(Integer.parseInt(record[i]));
+                    }
+                }
+                // Put given set of data into array
+                ints.add(nextdata);
+            }
+            json.put("rowHeaders", rHeadings);
+            json.put("data", ints);
+            
+            // Convert built object to a String
+            results = JSONValue.toJSONString(json);
+            
+        } catch(Exception e) { e.printStackTrace(); }
         
         // Return JSON String
         
@@ -94,7 +133,49 @@ public class Converter {
             CSVWriter csvWriter = new CSVWriter(writer, ',', '"', '\\', "\n");
             
             /* INSERT YOUR CODE HERE */
+            // Parse the json string and make it a JSONObject that can be worked with
+            JSONObject json = (JSONObject)parser.parse(jsonString);
             
+            // Handle column headers first as they are the first line of csv
+            // Store in JSONArray to be able to pull elements into a normal list
+            JSONArray colsArray = (JSONArray)json.get("colHeaders");
+            // List where headers will be placed
+            List<String> colsList = new ArrayList();
+            for (int i = 0; i < colsArray.size(); i++) {
+                // Each element is an Object that needs to be casted into a String
+                colsList.add((String)colsArray.get(i));
+            }
+            
+            // Convert list to array to make it usable by csvWriter
+            String[] cols = new String[colsList.size()];
+            cols = colsList.toArray(cols);
+            csvWriter.writeNext(cols);
+            
+            // Row headers and data in tandem, same setup as columns
+            JSONArray rowsArray = (JSONArray)json.get("rowHeaders");
+            JSONArray dataArray = (JSONArray)json.get("data");
+            // Only one list necessary because the string is written by row
+            List<String> rowList = new ArrayList();
+            
+            for (int i = 0; i < rowsArray.size(); i++) {
+                // Add row heading first
+                rowList.add((String)rowsArray.get(i));
+                // Convert data out of array into individual Strings, not numbers
+                JSONArray row = (JSONArray)dataArray.get(i);
+                // The data comes in long format, not int
+                long data;
+                for (int j = 0; j < row.size(); j++) {
+                    data = (long)row.get(j);
+                    rowList.add(Long.toString(data));
+                }
+                // Add a line to the StringWriter as was done above
+                String[] rowArray = new String[rowList.size()];
+                rowArray = rowList.toArray(rowArray);
+                csvWriter.writeNext(rowArray);
+                // Reset rowList, rowArray will reset itself
+                rowList = new ArrayList();
+            }
+            results = writer.toString();
         }
         catch(Exception e) { e.printStackTrace(); }
         
